@@ -1,13 +1,6 @@
 {
-  "version": 2,
   "cleanUrls": true,
   "trailingSlash": false,
-  "rewrites": [
-    { "source": "/", "destination": "/VIEW/index.html" },
-    { "source": "/catalog.js", "destination": "/VIEW/catalog.js" },
-    { "source": "/catalog.json", "destination": "/VIEW/catalog.json" },
-    { "source": "/img/:path*", "destination": "/VIEW/img/:path*" }
-  ],
   "headers": [
     {
       "source": "/(.*)",
