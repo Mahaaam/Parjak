@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<meta name="theme-color" content="#0b0e14"/>
+<title>Parjak DICOM Viewer</title>
+<style>
+:root {
+  --bg: #0b0e14;
+  --panel: #121821;
+  --panel-2: #171e28;
+  --text: #e8eef5;
+  --muted: #9aa7b5;
+  --accent: #3d9cf0;
+  --line: #2a3542;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --toolbar-h: 56px;
+  --sidebar-w: min(360px, 92vw);
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: Tahoma, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+}
+.app {
+  height: 100%;
+  height: 100dvh;
+  display: grid;
+  grid-template-columns: var(--sidebar-w) 1fr;
+  grid-template-rows: 1fr;
+}
+#sidebar {
+  background: var(--panel);
+  border-left: 1px solid var(--line);
+  overflow: auto;
+  padding: 12px;
+  padding-top: calc(12px + var(--safe-top));
+  padding-bottom: calc(12px + var(--safe-bottom));
+  -webkit-overflow-scrolling: touch;
+  z-index: 30;
+}
+#main {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #000;
+  position: relative;
+}
+#toolbar {
+  min-height: var(--toolbar-h);
+  padding: 8px 10px;
+  padding-top: calc(8px + var(--safe-top));
+  background: #141b23;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 8px;
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  z-index: 10;
+}
+.toolbar-left, .toolbar-right {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.toolbar-center {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+#stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  touch-action: none;
+  background: #000;
+  position: relative;
+}
+#stage img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+h1 { font-size: 16px; margin: 0 0 10px; }
+.study { margin-bottom: 14px; }
+.study h2 {
+  font-size: 13px;
+  margin: 0 0 6px;
+  color: var(--accent);
+  line-height: 1.45;
+}
+.series {
+  display: block;
+  width: 100%;
+  text-align: right;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--text);
+  padding: 10px;
+  margin: 0 0 6px;
+  border-radius: 8px;
+  cursor: pointer;
+  font: inherit;
+  line-height: 1.35;
+}
+.series:hover, .series.active {
+  border-color: var(--accent);
+  background: #223041;
+}
+.meta {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+  word-break: break-word;
+}
+#info {
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+button.nav, button.icon {
+  background: #243140;
+  color: var(--text);
+  border: 1px solid #3a4b5e;
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font: inherit;
+  min-height: 40px;
+}
+button.icon {
+  width: 42px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+#slider {
+  width: 100%;
+  accent-color: var(--accent);
+  height: 28px;
+}
+#backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.55);
+  z-index: 25;
+}
+.sidebar-close {
+  display: none;
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+@media (max-width: 900px) {
+  .app {
+    grid-template-columns: 1fr;
+  }
+  #sidebar {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: var(--sidebar-w);
+    transform: translateX(105%);
+    transition: transform .22s ease;
+    box-shadow: -8px 0 24px rgba(0,0,0,.35);
+  }
+  body.sidebar-open #sidebar { transform: translateX(0); }
+  body.sidebar-open #backdrop { display: block; }
+  .sidebar-close { display: block; }
+  #toolbar {
+    grid-template-columns: auto 1fr auto;
+  }
+  .nav-label { display: none; }
+  button.nav { min-width: 42px; padding: 8px; }
+  #info { font-size: 10px; }
+}
+
+@media (min-width: 901px) {
+  #menuBtn { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="backdrop" aria-hidden="true"></div>
+  <aside id="sidebar">
+    <button class="nav sidebar-close" id="closeSidebar" type="button">بستن فهرست</button>
+    <h1>همه تصاویر DICOM</h1>
+    <div id="list"></div>
+  </aside>
+  <section id="main">
+    <div id="toolbar">
+      <div class="toolbar-left">
+        <button class="icon" id="menuBtn" type="button" title="فهرست" aria-label="فهرست">☰</button>
+        <button class="nav" id="prev" type="button"><span class="nav-label">قبلی</span><span aria-hidden="true">‹</span></button>
+      </div>
+      <div class="toolbar-center">
+        <input type="range" id="slider" min="0" max="0" value="0"/>
+        <span class="meta" id="info">سری را انتخاب کنید</span>
+      </div>
+      <div class="toolbar-right">
+        <button class="nav" id="next" type="button"><span aria-hidden="true">›</span><span class="nav-label">بعدی</span></button>
+      </div>
+    </div>
+    <div id="stage"><img id="view" alt="dicom"/></div>
+  </section>
+</div>
+<script src="catalog.js"></script>
+<script>
+const listEl = document.getElementById('list');
+const view = document.getElementById('view');
+const info = document.getElementById('info');
+const slider = document.getElementById('slider');
+const stage = document.getElementById('stage');
+const backdrop = document.getElementById('backdrop');
+let images = [];
+let idx = 0;
+let activeBtn = null;
+
+function openSidebar() { document.body.classList.add('sidebar-open'); }
+function closeSidebar() { document.body.classList.remove('sidebar-open'); }
+
+function show(i) {
+  if (!images.length) return;
+  idx = Math.max(0, Math.min(images.length - 1, i));
+  view.src = images[idx].file;
+  slider.value = String(idx);
+  info.textContent = (idx + 1) + ' / ' + images.length + ' | frame ' + images[idx].frame + ' | ' + (images[idx].source || '');
+}
+
+function loadSeries(series, btn) {
+  images = series.images || [];
+  if (activeBtn) activeBtn.classList.remove('active');
+  activeBtn = btn;
+  btn.classList.add('active');
+  slider.max = String(Math.max(0, images.length - 1));
+  show(0);
+  closeSidebar();
+}
+
+(catalog.studies || []).forEach(study => {
+  const box = document.createElement('div');
+  box.className = 'study';
+  const h = document.createElement('h2');
+  h.textContent = (study.modality || '') + ' | ' + (study.study_desc || '') + ' | ' + (study.study_date || '');
+  box.appendChild(h);
+  const m = document.createElement('div');
+  m.className = 'meta';
+  m.textContent = (study.patient_name || '') + ' | ID ' + (study.patient_id || '');
+  box.appendChild(m);
+  (study.series || []).forEach(series => {
+    if (!(series.images || []).length) return;
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'series';
+    b.textContent = (series.series_desc || '') + ' (' + series.images.length + ') #' + (series.series_number || '?');
+    b.onclick = () => loadSeries(series, b);
+    box.appendChild(b);
+  });
+  listEl.appendChild(box);
+});
+
+document.getElementById('prev').onclick = () => show(idx - 1);
+document.getElementById('next').onclick = () => show(idx + 1);
+document.getElementById('menuBtn').onclick = openSidebar;
+document.getElementById('closeSidebar').onclick = closeSidebar;
+backdrop.onclick = closeSidebar;
+slider.oninput = () => show(Number(slider.value));
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') show(idx + 1);
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') show(idx - 1);
+  if (e.key === 'Escape') closeSidebar();
+});
+
+// Touch: swipe + vertical drag to change frames
+let touchStartX = 0, touchStartY = 0, touchLastY = 0, touching = false;
+stage.addEventListener('touchstart', e => {
+  if (!e.touches.length) return;
+  touching = true;
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+  touchLastY = touchStartY;
+}, { passive: true });
+stage.addEventListener('touchmove', e => {
+  if (!touching || !e.touches.length || !images.length) return;
+  const y = e.touches[0].clientY;
+  const dy = y - touchLastY;
+  if (Math.abs(dy) > 18) {
+    show(idx + (dy > 0 ? -1 : 1));
+    touchLastY = y;
+  }
+}, { passive: true });
+stage.addEventListener('touchend', e => {
+  if (!touching) return;
+  touching = false;
+  const t = e.changedTouches[0];
+  if (!t) return;
+  const dx = t.clientX - touchStartX;
+  const dy = t.clientY - touchStartY;
+  if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
+    // RTL: swipe right -> previous visually feels like next content in LTR apps;
+    // keep: swipe left = next frame, swipe right = previous
+    show(idx + (dx < 0 ? 1 : -1));
+  }
+}, { passive: true });
+
+// Wheel scroll through frames
+stage.addEventListener('wheel', e => {
+  if (!images.length) return;
+  e.preventDefault();
+  show(idx + (e.deltaY > 0 ? 1 : -1));
+}, { passive: false });
+
+// Auto-open first series with images
+const first = listEl.querySelector('button.series');
+if (first) first.click();
+else openSidebar();
+</script>
+</body>
+</html>

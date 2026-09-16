@@ -1,0 +1,18 @@
+# Large raw hospital data / desktop viewers (not needed for web app)
+DICOM/
+CDViewer/
+WebViewer/
+Autorun.exe
+autorun.inf
+DICOMDIR
+icon.ico
+logo.png
+notice.txt
+
+# Local junk
+TMP/
+.vercel/
+*.pyc
+__pycache__/
+.DS_Store
+Thumbs.db
